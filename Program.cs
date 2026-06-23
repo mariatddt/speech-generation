@@ -43,20 +43,20 @@ class Program
 
         Dictionary<string, string> data = new()
         {
-            //    {"Are you sure about the feedback.mp3", "Adakah anda pasti tentang maklum balas ini?"},
+            //{"Are you sure about the feedback.mp3", "คุณแน่ใจเกี่ยวกับข้อเสนอแนะนั้นหรือเปล่า?"},
             //{"Do you want to quit.mp3", "คุณต้องการลาออกหรือไม่?"},
-            //    {"Do you want to take a break.mp3", "Anda telah berlatih dengan cukup hari ini. Badan anda boleh berehat untuk sepanjang hari."},
+            //{"Do you want to take a break.mp3", "Anda sudah berlatih secukupnya, sila berehat sebentar sebelum meneruskan."},
             //{"Fantastic! We can enjoy together!.mp3", "เยี่ยมไปเลย! เราจะได้สนุกด้วยกัน!"},
-            //    {"How was the game.mp3", "Bagaimanakah permainan tadi? Adakah ia menyeronokkan?"},
+            //{"How was the game.mp3", "เกมเป็นอย่างไรบ้าง?"},
             //{"I_ll make you happy in this training session!.mp3", "ฉันจะทำให้คุณมีความสุขในระหว่างการฝึกอบรมครั้งนี้!"},
             //{"I_m sorry to hear that, I_ll cheer you up!.mp3", "ฉันเสียใจที่ได้ยินเช่นนั้น ฉันจะทำให้คุณรู้สึกดีขึ้น!"},
             //{"Let me know how you are feeling today..mp3", "บอกฉันหน่อยสิว่าวันนี้คุณรู้สึกอย่างไรบ้าง."},
             //{"Let_s train today!.mp3", "มาฝึกซ้อมกันวันนี้เลย!"},
             //{"No problem, We can have fun training!.mp3", "ไม่มีปัญหา เราสามารถฝึกอบรมอย่างสนุกสนานได้!"},
             //{"Oh! that_s nice to hear, Let_s train!.mp3", "โอ้! ดีจังเลย งั้นเรามาฝึกกันเถอะ!"},
-            //    {"Please calibrate your movement now.mp3", "Sila kalibrasi pergerakan anda sekarang."},
-            //{"Unlock the game.mp3", " ปลดล็อกรายการที่เลือกใช่หรือไม่?"},
-            //    {"Unlock the selected item.mp3", "Buka kunci item yang dipilih."},
+            //{"Please calibrate your movement now.mp3", "โปรดปรับเทียบการเคลื่อนไหวของคุณ "},
+            //{"Unlock the selected item.mp3", " ปลดล็อกรายการที่เลือกใช่หรือไม่?"},
+            {"Unlock the game.mp3", "ปลดล็อกเกมใช่หรือไม่?"},
             //{"You don_t have enough coins.mp3", " คุณมีเหรียญไม่พอ"}
         };
         var speechConfig = SpeechConfig.FromEndpoint(new Uri(endpoint), speechKey);
@@ -65,8 +65,7 @@ class Program
         // Malay: ms-MY-YasminNeural
         // Tamil: ta-IN-PallaviNeural
         // Thai: th-TH-NiwatNeural
-        foreach (var item in data)
-        
+        foreach (var item in data)  
         {
             using var synthesizer = new SpeechSynthesizer(speechConfig, null);
             var ssml =
