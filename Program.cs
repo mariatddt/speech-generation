@@ -1,15 +1,15 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using DotNetEnv;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
+using ClosedXML.Excel;
 using Azure;
 using Azure.Identity;
 using Azure.Core;
 using Azure.Core.Pipeline;
-
-
 class Program
 {
     static void OutputSpeechSynthesisResult(SpeechSynthesisResult speechSynthesisResult, string text)
@@ -41,52 +41,139 @@ class Program
         string speechKey = Environment.GetEnvironmentVariable("SPEECH_KEY") ?? throw new InvalidOperationException("SPEECH_KEY not set in .env");
         string endpoint = Environment.GetEnvironmentVariable("SPEECH_ENDPOINT") ?? throw new InvalidOperationException("SPEECH_ENDPOINT not set in .env");
 
-        Dictionary<string, string> data = new()
-        {
-            //{"Are you sure about the feedback.mp3", "คุณแน่ใจเกี่ยวกับข้อเสนอแนะนั้นหรือเปล่า?"},
-            //{"Do you want to quit.mp3", "คุณต้องการลาออกหรือไม่?"},
-            //{"Do you want to take a break.mp3", "Anda sudah berlatih secukupnya, sila berehat sebentar sebelum meneruskan."},
-            //{"Fantastic! We can enjoy together!.mp3", "เยี่ยมไปเลย! เราจะได้สนุกด้วยกัน!"},
-            //{"How was the game.mp3", "เกมเป็นอย่างไรบ้าง?"},
-            //{"I_ll make you happy in this training session!.mp3", "ฉันจะทำให้คุณมีความสุขในระหว่างการฝึกอบรมครั้งนี้!"},
-            //{"I_m sorry to hear that, I_ll cheer you up!.mp3", "ฉันเสียใจที่ได้ยินเช่นนั้น ฉันจะทำให้คุณรู้สึกดีขึ้น!"},
-            //{"Let me know how you are feeling today..mp3", "บอกฉันหน่อยสิว่าวันนี้คุณรู้สึกอย่างไรบ้าง."},
-            //{"Let_s train today!.mp3", "มาฝึกซ้อมกันวันนี้เลย!"},
-            //{"No problem, We can have fun training!.mp3", "ไม่มีปัญหา เราสามารถฝึกอบรมอย่างสนุกสนานได้!"},
-            //{"Oh! that_s nice to hear, Let_s train!.mp3", "โอ้! ดีจังเลย งั้นเรามาฝึกกันเถอะ!"},
-            //{"Please calibrate your movement now.mp3", "โปรดปรับเทียบการเคลื่อนไหวของคุณ "},
-            //{"Unlock the selected item.mp3", " ปลดล็อกรายการที่เลือกใช่หรือไม่?"},
-            {"Unlock the game.mp3", "ปลดล็อกเกมใช่หรือไม่?"},
-            //{"You don_t have enough coins.mp3", " คุณมีเหรียญไม่พอ"}
-        };
-        var speechConfig = SpeechConfig.FromEndpoint(new Uri(endpoint), speechKey);
-        speechConfig.SpeechSynthesisVoiceName = "th-TH-NiwatNeural";
-        speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3);
-        // Malay: ms-MY-YasminNeural
-        // Tamil: ta-IN-PallaviNeural
-        // Thai: th-TH-NiwatNeural
-        foreach (var item in data)  
-        {
-            using var synthesizer = new SpeechSynthesizer(speechConfig, null);
-            var ssml =
-                "<speak xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xmlns:emo=\"http://www.w3.org/2009/10/emotionml\" version=\"1.0\" xml:lang=\"th-TH\"><voice name=\"th-TH-NiwatNeural\">"
-                + item.Value
-                + "</voice></speak>";
-            var result = await synthesizer.SpeakSsmlAsync(ssml);
-            // var result = await synthesizer.SpeakTextAsync(item.Value);
+        // Parse command line arguments for specific targeting
+        string? targetLang = null;
+        string? targetFile = null;
 
-            if (result.Reason == ResultReason.SynthesizingAudioCompleted)
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--lang" && i + 1 < args.Length)
             {
-                Directory.CreateDirectory("output");
-                File.WriteAllBytes(Path.Combine("output", item.Key), result.AudioData);
-                Console.WriteLine($"MP3 file '{item.Key}' created!");
+                targetLang = args[i + 1].Trim();
             }
-            else
+            if (args[i] == "--file" && i + 1 < args.Length)
             {
-                Console.WriteLine($"Error synthesizing '{item.Value}': {result.Reason}");
+                targetFile = args[i + 1].Trim();
             }
         }
+
+        string spreadsheetPath = "TextToSpeechSpreadsheet.xltx"; 
+
+        if (!File.Exists(spreadsheetPath))
+        {
+            Console.WriteLine($"Error: Spreadsheet file not found at {spreadsheetPath}");
+            return;
+        }
+
+        Console.WriteLine("Reading multi-language layout from spreadsheet...");
+
+        using var workbook = new XLWorkbook(spreadsheetPath);
+        var worksheet = workbook.Worksheet(1);
+        
+        var rows = worksheet.RangeUsed().RowsUsed();
+        var headerRow = worksheet.FirstRowUsed();
+        int lastColumnNum = worksheet.LastColumnUsed().ColumnNumber();
+
+        // Dynamically identify language headers (Columns B, D, F, H, etc.)
+        var languageColumns = new System.Collections.Generic.List<(int voiceCol, int textCol, string locale)>();
+        
+        for (int col = 2; col <= lastColumnNum; col += 2)
+        {
+            string headerValue = headerRow.Cell(col).GetString().Trim();
+            if (headerValue.EndsWith("_Voice"))
+            {
+                string locale = headerValue.Replace("_Voice", ""); 
+                languageColumns.Add((col, col + 1, locale));
+            }
+        }
+
+        bool isHeader = true;
+        int generatedCount = 0;
+
+        foreach (var row in rows)
+        {
+            if (isHeader)
+            {
+                isHeader = false;
+                continue;
+            }
+
+            // Grab the exact filename written in Column A
+            string baseFileName = row.Cell(1).GetString().Trim();
+            if (string.IsNullOrEmpty(baseFileName)) continue;
+
+            // Ensure it has a clean .mp3 extension if it doesn't already
+            string finalFileName = baseFileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) 
+                ? baseFileName 
+                : baseFileName + ".mp3";
+
+            // FILTER: If a target file is specified, skip everything else
+            if (!string.IsNullOrEmpty(targetFile) && !finalFileName.Equals(targetFile, StringComparison.OrdinalIgnoreCase) && !baseFileName.Equals(targetFile, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // Iterate through every language pair found in this row
+            foreach (var lang in languageColumns)
+            {
+                // FILTER: If a target language is specified, skip other languages
+                if (!string.IsNullOrEmpty(targetLang) && !lang.locale.Equals(targetLang, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string voiceName = row.Cell(lang.voiceCol).GetString().Trim();
+                string textValue = row.Cell(lang.textCol).GetString().Trim();
+
+                if (string.IsNullOrEmpty(voiceName) || string.IsNullOrEmpty(textValue))
+                    continue;
+
+                // Create language-specific directories: output/ar-SA, output/zh-CN, etc.
+                string outputDirectory = Path.Combine("output", lang.locale);
+                Directory.CreateDirectory(outputDirectory);
+                
+                string fullOutputPath = Path.Combine(outputDirectory, finalFileName);
+
+                Console.WriteLine($"Processing [{lang.locale}]: {finalFileName}...");
+
+                var speechConfig = SpeechConfig.FromEndpoint(new Uri(endpoint), speechKey);
+                speechConfig.SpeechSynthesisVoiceName = voiceName;
+                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3);
+
+                using var synthesizer = new SpeechSynthesizer(speechConfig, null);
+
+                var ssml = $@"<speak xmlns=""http://www.w3.org/2001/10/synthesis"" 
+                                     xmlns:mstts=""http://www.w3.org/2001/mstts"" 
+                                     xmlns:emo=""http://www.w3.org/2009/10/emotionml"" 
+                                     version=""1.0"" 
+                                     xml:lang=""{lang.locale}"">
+                                <voice name=""{voiceName}"">
+                                    {textValue}
+                                </voice>
+                             </speak>";
+
+                var result = await synthesizer.SpeakSsmlAsync(ssml);
+
+                if (result.Reason == ResultReason.SynthesizingAudioCompleted)
+                {
+                    File.WriteAllBytes(fullOutputPath, result.AudioData);
+                    Console.WriteLine($" -> Saved to {fullOutputPath}");
+                    generatedCount++;
+                }
+                else
+                {
+                    Console.WriteLine($" -> Error synthesizing {finalFileName} in {lang.locale}");
+                    OutputSpeechSynthesisResult(result, textValue);
+                }
+            }
+        }
+
+        Console.WriteLine($"\n Task completed! Total audio files generated in this run: {generatedCount}");
     }
 }
 
-
+// Speech Generation Guide: 
+// dotnet run ➔ Generates everything.
+// dotnet run -- --lang it-IT ➔ Generates only Italian files.
+// dotnet run -- --file "Unlock the game.mp3" ➔ Generates that exact phrase across all languages.
+// dotnet run --lang zh-CN --file "Unlock the game.mp3" ➔ Generates only that exact phrase in Chinese.

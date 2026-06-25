@@ -1,0 +1,4 @@
+bin/
+obj/
+*.mp3
+.env
