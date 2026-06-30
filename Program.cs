@@ -10,6 +10,7 @@ using Azure;
 using Azure.Identity;
 using Azure.Core;
 using Azure.Core.Pipeline;
+
 class Program
 {
     static void OutputSpeechSynthesisResult(SpeechSynthesisResult speechSynthesisResult, string text)
@@ -142,13 +143,16 @@ class Program
 
                 using var synthesizer = new SpeechSynthesizer(speechConfig, null);
 
+                // --- TUNED INTONATION SSML CHUNK APPLIED HERE ---
                 var ssml = $@"<speak xmlns=""http://www.w3.org/2001/10/synthesis"" 
                                      xmlns:mstts=""http://www.w3.org/2001/mstts"" 
                                      xmlns:emo=""http://www.w3.org/2009/10/emotionml"" 
                                      version=""1.0"" 
                                      xml:lang=""{lang.locale}"">
                                 <voice name=""{voiceName}"">
-                                    {textValue}
+                                    <prosody rate=""-5%"">
+                                        <lang xml:lang=""{lang.locale}"">{textValue}</lang>
+                                    </prosody>
                                 </voice>
                              </speak>";
 
@@ -176,4 +180,4 @@ class Program
 // dotnet run ➔ Generates everything.
 // dotnet run -- --lang it-IT ➔ Generates only Italian files.
 // dotnet run -- --file "Unlock the game.mp3" ➔ Generates that exact phrase across all languages.
-// dotnet run --lang zh-CN --file "Unlock the game.mp3" ➔ Generates only that exact phrase in Chinese.
+// dotnet run -- --lang zh-CN --file "Unlock the game.mp3" ➔ Generates only that exact phrase in Chinese.
