@@ -58,7 +58,7 @@ class Program
             }
         }
 
-        string spreadsheetPath = "TextToSpeechSpreadsheet.xltx"; 
+        string spreadsheetPath = "TextToSpeechSpreadsheet.xltx";
 
         if (!File.Exists(spreadsheetPath))
         {
@@ -70,20 +70,20 @@ class Program
 
         using var workbook = new XLWorkbook(spreadsheetPath);
         var worksheet = workbook.Worksheet(1);
-        
+
         var rows = worksheet.RangeUsed().RowsUsed();
         var headerRow = worksheet.FirstRowUsed();
         int lastColumnNum = worksheet.LastColumnUsed().ColumnNumber();
 
         // Dynamically identify language headers (Columns B, D, F, H, etc.)
         var languageColumns = new System.Collections.Generic.List<(int voiceCol, int textCol, string locale)>();
-        
+
         for (int col = 2; col <= lastColumnNum; col += 2)
         {
             string headerValue = headerRow.Cell(col).GetString().Trim();
             if (headerValue.EndsWith("_Voice"))
             {
-                string locale = headerValue.Replace("_Voice", ""); 
+                string locale = headerValue.Replace("_Voice", "");
                 languageColumns.Add((col, col + 1, locale));
             }
         }
@@ -104,8 +104,8 @@ class Program
             if (string.IsNullOrEmpty(baseFileName)) continue;
 
             // Ensure it has a clean .mp3 extension if it doesn't already
-            string finalFileName = baseFileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) 
-                ? baseFileName 
+            string finalFileName = baseFileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
+                ? baseFileName
                 : baseFileName + ".mp3";
 
             // FILTER: If a target file is specified, skip everything else
@@ -132,14 +132,14 @@ class Program
                 // Create language-specific directories: output/ar-SA, output/zh-CN, etc.
                 string outputDirectory = Path.Combine("output", lang.locale);
                 Directory.CreateDirectory(outputDirectory);
-                
+
                 string fullOutputPath = Path.Combine(outputDirectory, finalFileName);
 
                 Console.WriteLine($"Processing [{lang.locale}]: {finalFileName}...");
 
                 var speechConfig = SpeechConfig.FromEndpoint(new Uri(endpoint), speechKey);
                 speechConfig.SpeechSynthesisVoiceName = voiceName;
-                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3);
+                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3);
 
                 using var synthesizer = new SpeechSynthesizer(speechConfig, null);
 
