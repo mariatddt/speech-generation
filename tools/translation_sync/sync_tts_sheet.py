@@ -168,6 +168,10 @@ def main():
 
     updated = write_back(worksheet, headers, dataset, row_lookup, target_locales)
     out_path = str(Path(SHEET_PATH).with_name(Path(SHEET_PATH).stem + "_synced.xlsx"))
+    
+    # Fix Excel corrupt file issue when saving from an .xltx template
+    workbook.template = False
+    
     workbook.save(out_path)
     print(f"Detected locales: {target_locales}")
     print(f"Updated {updated} cells. Saved to {out_path}")
