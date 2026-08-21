@@ -1,0 +1,2 @@
+openpyxl>=3.1
+translation-toolkit @ git+https://github.com/Cynteract/translation-toolkit.git@279d82731f90b88efb53b7d15c677ecfea3ddb92
