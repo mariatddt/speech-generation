@@ -160,7 +160,3 @@ This repository contains tooling developed in a professional project context. So
 <img width="1917" height="1118" alt="image" src="https://github.com/user-attachments/assets/f47ada4c-5f37-49d2-95b1-9762d2f960d4" />
 
 <img width="1902" height="1082" alt="image" src="https://github.com/user-attachments/assets/a42e0167-f8a4-4cbf-89dc-84278ad752ee" />
-
-
-
-This project was developed in a professional internship context. Some components, resources or implementation details may be subject to company ownership or confidentiality restrictions.
